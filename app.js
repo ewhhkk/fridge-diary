@@ -95,7 +95,7 @@ function dayTag(it) {
   const d = dleft(it);
   if (d < 0) return '<span class="tag red">' + (it.keep ? L('已过期·保留','kept') : L('过期' + (-d) + '天', (-d) + 'd ago')) + '</span>';
   if (d === 0) return '<span class="tag red">' + L('今天','today') + '</span>';
-  if (warnOf(it)) return '<span class="tag">' + (d === 1 ? L('明天','1d') : L(d + '天', d + 'd')) + '</span>';
+  if (warnOf(it)) return '<span class="tag warn">' + (d === 1 ? L('明天','1d') : L(d + '天', d + 'd')) + '</span>';
   return '<span class="tag gray">' + (d > 365 ? L('很久','1y+') : L(d + '天', d + 'd')) + '</span>';
 }
 function addToShop(name, cardId, silent) {
@@ -275,7 +275,7 @@ function invListHtml() {
       const c = cardOf(it.cardId);
       const flags = (it.opened ? ' <span class="tag gray">' + L('已开封','opened') + '</span>' : '') + (it.expType === 'UB' && it.labeled ? ' <span class="tag gray">Use by</span>' : '');
       h += '<div class="swipe" data-sw="' + it.id + '"><div class="under">' + L('用完','Used up') + '</div><div class="inner"><div class="li" style="padding:8px 12px;border:0">' +
-        (ui.batch ? '<span data-a="sel" data-id="' + it.id + '" style="width:22px;height:22px;border-radius:7px;border:1.5px solid ' + (ui.sel.has(it.id) ? 'var(--acc);background:var(--acc);color:#fff' : 'var(--line)') + ';display:inline-flex;align-items:center;justify-content:center">' + (ui.sel.has(it.id) ? svg('check').replace('<svg', '<svg style="width:14px"') : '') + '</span>' : '') +
+        (ui.batch ? '<span data-a="sel" data-id="' + it.id + '" style="width:22px;height:22px;border-radius:7px;border:1.5px solid ' + (ui.sel.has(it.id) ? 'var(--acc);background:var(--acc);color:var(--onacc)' : 'var(--line)') + ';display:inline-flex;align-items:center;justify-content:center">' + (ui.sel.has(it.id) ? svg('check').replace('<svg', '<svg style="width:14px"') : '') + '</span>' : '') +
         '<span class="sp" data-a="item" data-id="' + it.id + '">' + esc(nm(c)) + flags + '</span>' +
         '<span class="step"><button data-a="dec" data-id="' + it.id + '">−</button><span>' + fq(it.qty) + uName(it.unit) + '</span><button data-a="inc" data-id="' + it.id + '">+</button></span>' + dayTag(it) +
         '</div></div></div>';
@@ -290,7 +290,7 @@ function pInv() {
     '<div class="row"><button class="btn sm" data-a="freeCook">' + L('随手做','Freestyle') + '</button><button class="btn sm" data-a="batch">' + (ui.batch ? L('完成','Done') : L('批量','Select')) + '</button></div></div>';
   h += '<input id="invSearch" placeholder="' + L('搜索食材','Search') + '" value="' + esc(ui.invSearch) + '" style="margin-bottom:8px">';
   h += '<div class="scroll-x">' + ['全部'].concat(LOCS).map(l => '<button class="chip ' + (ui.invLoc === l ? 'on' : '') + '" data-a="invLoc" data-v="' + l + '">' + (l === '全部' ? L('全部','All') : locN(l)) + '</button>').join('') + '</div>';
-  h += '<div class="mut" style="margin:6px 2px">' + L('左滑一行 = 用完','Swipe left = used up') + '</div>';
+  h += '<div style="height:6px"></div>';
   h += '<div id="invList">' + invListHtml() + '</div>';
   if (ui.batch) h += '<div class="bar" style="position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));padding:10px 16px;justify-content:center;z-index:22"><button class="btn red" data-a="batchDel">' + L('删除','Delete') + ' (' + ui.sel.size + ')</button><button class="btn" data-a="batchShop">' + L('加入购物清单','Add to list') + '</button></div>';
   return h;
@@ -311,12 +311,6 @@ function pRec() {
     const f = ui.f;
     const chipRow = (key, opts, labelFn) => '<div class="scroll-x" style="margin-bottom:6px">' + opts.map(o => '<button class="chip ' + (f[key] === o[0] ? 'on' : '') + '" data-a="filt" data-k="' + key + '" data-v="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>';
     h += chipRow('time', [[0, L('不限时间','Any time')], [15, '≤15' + L('分钟','min')], [30, '≤30' + L('分钟','min')], [60, '≤60' + L('分钟','min')]]);
-    h += chipRow('type', [['', L('全部','All')]].concat(TAGS.map(t => [t, tagN(t)])));
-    h += chipRow('meal', [['', L('全部餐次','Any meal')]].concat(MEALS.map(t => [t, mealN(t)])));
-    h += chipRow('diff', [['', L('全部难度','Any level')]].concat(DIFFS.map(t => [t, diffN(t)])));
-    h += '<div class="row" style="margin:6px 0 4px"><input id="mustIn" list="cardList" placeholder="' + L('必须用到的食材（可空）','Must include (optional)') + '" value="' + esc(f.must) + '" style="flex:1">' +
-      '<span class="step"><button data-a="serv" data-v="-1">−</button><span>' + (ui.serv ? ui.serv + L('人份',' serv') : L('原份量','default')) + '</span><button data-a="serv" data-v="1">+</button></span></div>';
-    h += datalist();
     h += '<div id="recList">' + recListHtml() + '</div>';
   } else {
     h += '<input id="recSearch" placeholder="' + L('搜索菜谱','Search recipes') + '" value="' + esc(ui.recSearch) + '" style="margin-bottom:8px">';
@@ -353,16 +347,25 @@ function lowStock() {
 function pShop() {
   const au = S.settings.country === 'AU';
   const list = S.shop.filter(s => !s.done);
-  let h = '<div class="top"><div><h1>' + L('购物清单','Shopping list') + '</h1><div class="mut">' + (au ? L('澳洲模式 · 按渠道分组','Australia · grouped by store') : L('中国模式','China mode')) + '</div></div></div>';
-  h += '<div class="row" style="margin-bottom:10px"><input id="shopIn" list="cardList" placeholder="' + L('加一样要买的','Add an item') + '"><button class="btn pri" data-a="shopAdd">' + L('加','Add') + '</button></div>' + datalist();
+  let h = '<div class="top"><div><h1>' + L('购物清单','Shopping list') + '</h1><div class="mut">' +
+    (list.length ? L('还要买 ' + list.length + ' 样', list.length + ' to buy') : L('都买齐了','All done')) + (au ? L(' · 按超市分组',' · by store') : '') + '</div></div></div>';
+  h += '<div class="row" style="margin-bottom:12px"><input id="shopIn" list="cardList" placeholder="' + L('想买什么？','What do you need?') + '"><button class="btn pri" data-a="shopAdd">' + svg('plus').replace('<svg', '<svg style="width:18px;height:18px"') + '</button></div>' + datalist();
   const low = lowStock();
-  if (low.length) h += '<div class="card"><h2>' + L('常备品不够了','Running low') + '</h2>' + low.map(c => '<div class="li"><span class="sp">' + esc(nm(c)) + '</span><button class="btn sm" data-a="shopCard" data-id="' + c.id + '">' + L('加入','Add') + '</button></div>').join('') + '</div>';
-  const row = s => '<div class="li"><button data-a="shopTick" data-id="' + s.id + '" style="width:24px;height:24px;border-radius:50%;border:1.5px solid var(--acc)"></button><span class="sp">' + esc(s.cardId ? nm(cardOf(s.cardId)) : s.name) + '</span>' +
-    (au ? '<select data-ch="' + s.id + '" style="width:auto;padding:3px 6px;font-size:12px">' + CHANNELS.map(c => '<option value="' + c + '"' + (s.channel === c ? ' selected' : '') + '>' + chN(c) + '</option>').join('') + '</select>' : '') +
-    '<button class="ibtn" style="width:28px;height:28px" data-a="shopDel" data-id="' + s.id + '">' + svg('x') + '</button></div>';
-  if (!list.length) h += '<div class="empty">' + L('清单是空的','Nothing to buy') + '</div>';
-  else if (au) CHANNELS.forEach(ch => { const arr = list.filter(s => (s.channel || '其他') === ch); if (arr.length) h += '<div class="sec">' + chN(ch) + '</div><div class="card" style="padding:4px 14px">' + arr.map(row).join('') + '</div>'; });
-  else h += '<div class="card" style="padding:4px 14px">' + list.map(row).join('') + '</div>';
+  if (low.length) h += '<div class="sec">' + L('常备品不够了，点一下加入','Running low — tap to add') + '</div><div class="chips" style="margin-bottom:4px">' +
+    low.map(c => '<button class="chip" data-a="shopCard" data-id="' + c.id + '">+ ' + esc(nm(c)) + '</button>').join('') + '</div>';
+  const row = s => {
+    const c = s.cardId ? cardOf(s.cardId) : null;
+    return '<div class="li" style="padding:10px 0"><button data-a="shopTick" data-id="' + s.id + '" aria-label="done" style="width:22px;height:22px;border-radius:7px;border:1.5px solid var(--mut);flex:none"></button>' +
+      '<span class="sp" data-a="shopTick" data-id="' + s.id + '">' + esc(c ? nm(c) : s.name) + (c ? ' <span class="mut">' + fq(c.qty) + uName(c.unit) + '</span>' : '') + '</span>' +
+      (au ? '<select data-ch="' + s.id + '" style="width:auto;padding:3px 8px;font-size:12px;border:0;border-radius:999px;background:var(--gray);color:var(--mut)">' + CHANNELS.map(x => '<option value="' + x + '"' + (s.channel === x ? ' selected' : '') + '>' + chN(x) + '</option>').join('') + '</select>' : '') +
+      '<button data-a="shopDel" data-id="' + s.id + '" aria-label="delete" style="color:var(--mut);width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center">' + svg('x').replace('<svg', '<svg style="width:16px;height:16px"') + '</button></div>';
+  };
+  if (!list.length) return h + '<div class="empty" style="padding:40px 8px">' + svg('cart').replace('<svg', '<svg style="width:36px;height:36px;color:var(--line);display:block;margin:0 auto 8px"') + L('清单是空的。东西用完会自动加进来。','Nothing to buy. Used-up items land here.') + '</div>';
+  const keyOf = s => au ? (s.channel || '其他') : ((s.cardId && cardOf(s.cardId) ? cardOf(s.cardId).cat : null) || '其他');
+  const groups = au ? CHANNELS : CATS;
+  const labelOf = g => au ? chN(g) : catN(g);
+  groups.forEach(g => { const arr = list.filter(s => keyOf(s) === g); if (!arr.length) return;
+    h += '<div class="sec">' + labelOf(g) + ' · ' + arr.length + '</div><div class="card" style="padding:0 14px">' + arr.map(row).join('') + '</div>'; });
   return h;
 }
 
@@ -489,7 +492,7 @@ function sRecipe(s) {
   const factor = s.serv / r.serve;
   let h = hd(esc(rn(r)));
   h += '<div class="row" style="margin-bottom:8px"><span class="chips sp">' + (r.tags || []).map(t => '<span class="tag">' + tagN(t) + '</span>').join('') + '<span class="tag gray">' + diffN(r.diff) + '</span><span class="tag gray">' + r.min + L('分钟','min') + '</span></span>' +
-    '<button class="ibtn" data-a="fav" data-id="' + r.id + '" style="color:' + (r.fav ? 'var(--acc)' : '#A3B3A8') + '">' + svg('star', r.fav) + '</button></div>';
+    '<button class="ibtn" data-a="fav" data-id="' + r.id + '" style="color:' + (r.fav ? 'var(--acc)' : 'var(--navoff)') + '">' + svg('star', r.fav) + '</button></div>';
   h += '<div class="card"><div class="row" style="margin-bottom:4px"><h2 class="sp">' + L('原料','Ingredients') + '</h2><span class="step"><button data-a="rServ" data-v="-1">−</button><span>' + s.serv + L('人份',' serv') + '</span><button data-a="rServ" data-v="1">+</button></span></div>';
   r.ings.forEach(g => {
     const n = g.ref ? (S.recipes.find(x => x.id === g.ref) || {}).name || g.n : normName(g.n);

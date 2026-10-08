@@ -1,5 +1,5 @@
 // 冰箱日记离线缓存。改了代码就把版本号 +1，手机上会自动更新。
-const VERSION = 'fridge-diary-v3';
+const VERSION = 'fridge-diary-v5';
 const FILES = ['./', './index.html', './app.js', './data.js', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
